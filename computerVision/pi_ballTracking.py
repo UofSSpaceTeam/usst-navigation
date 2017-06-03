@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 #distance in inches
 def computeDistance(radius, focal):
@@ -66,19 +68,21 @@ def ballDetectionFromPictures(greenLower,greenUpper,kernel):
 		plt.show()
 
 def centerize(x):
-	if 0 < x < (680/2)-20:
+	if 0 < x < (640/2)-40:
 		return 'left'
-	elif (680/2)+20 < x < 680:
+	elif (640/2)+40 < x < 640:
 		return 'right'
 	else:
 		return None
 
 def ballDetectionFromCamera(greenLower, greenUpper, kernel, camNum, focal):
-	cam = cv2.VideoCapture(camNum)
 	
-	while True:
-		ret, frame = cam.read()
-		mask = segmentation(frame, greenLower, greenUpper, kernel)
+	camera = PiCamera()
+	camera.resolution = (640, 480)
+	camera.framerate = 32
+	rawCapture = PiRGBArray(camera, size=(640, 480))
+	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+		mask = segmentation(frame.array, greenLower, greenUpper, kernel)
 		ball = findBall(mask)
 		if ball is not None:
 			# frame = drawBall(frame, ball[0],ball[1],ball[2],ball[3])
@@ -88,21 +92,16 @@ def ballDetectionFromCamera(greenLower, greenUpper, kernel, camNum, focal):
 				print(str(dist) + ","+s)
 			else:
 				print('centered')
-			cv2.putText(frame,str(dist),ball[3],cv2.FONT_HERSHEY_SIMPLEX,0.5,255)
-		
-		# cv2.imshow('frame',frame)
-	
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
-	
 
+		rawCapture.truncate(0)
+		
 def main():	
 	greenLower = (27, 55, 100)
 	greenUpper = (45, 150, 255)
 	kernel = np.ones((5,5),np.uint8)
 	focal = 24*122*0.39
 	#ballDetectionFromPictures(greenLower,greenUpper,kernel)
-	ballDetectionFromCamera(greenLower,greenUpper,kernel, 1, focal)
+	ballDetectionFromCamera(greenLower,greenUpper,kernel, 0, focal)
 	
 
 if __name__ == "__main__":
