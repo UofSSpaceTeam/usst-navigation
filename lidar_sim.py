@@ -1,8 +1,9 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import random
+import math
 
-max_range = 1000
+max_range = 600
 N = 15 # number of objects to add
 max_variance = 15
 
@@ -20,11 +21,12 @@ def gen_map():
         end = max(a,b)
 
         # Object is located approximately here
-        obj_dist = random.randrange(max_variance,max_range)
+        obj_dist = random.randrange(2*max_variance,max_range)
 
         # how much to vary the object surface by
         roughness = random.randrange(1,max_variance)
 
+        length = end-start
         # Add object while varying the surface
         for j in range(start,end):
             distances[j] = obj_dist+random.randrange(-roughness,roughness)
@@ -98,9 +100,9 @@ def plot_result(distances, waypoints, target):
     way_angles = [angles[a] for a in list(zip(*waypoints))[0]]
     way_dists = list(zip(*waypoints))[1]
 
-    plt.polar(angles, distances, # terrain
-              way_angles, way_dists,'g', #path
-              angles[target[0]], target[1], 'bo')
+    plt.polar(angles, distances, 'k',# terrain
+              way_angles, way_dists,'r', #path
+              angles[target[0]], target[1], 'go')
     plt.show()
 
 def main():
