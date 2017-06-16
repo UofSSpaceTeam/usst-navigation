@@ -1,5 +1,6 @@
-from math import sin, cos
+from math import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 '''
 Formulas taken from this paper:
@@ -23,8 +24,9 @@ def diff_drive_fk(x, y, l, theta, vl, vr, delta_t):
     else:
         R = l/2*(vl + vr)/(vr-vl)
         omega = (vr-vl)/l
-        theta = omega*delta_t + theta
+        
         ICC = (x-R*sin(theta), y+R*cos(theta))
+        #theta = omega*delta_t + theta
         a = np.matrix([[cos(omega*delta_t), -sin(omega*delta_t), 0],
             [sin(omega*delta_t), cos(omega*delta_t), 0],
             [0, 0, 1]])
@@ -34,29 +36,74 @@ def diff_drive_fk(x, y, l, theta, vl, vr, delta_t):
         final = [result[0][0], result[1][0], result[2][0]]
     return final
 
+def inverse_kinematics_drive(x,y,x_dst,y_dst,theta, l):
+	"""
+		input: 
+			x,y: the starting position
+			x_dst, y_dst: the destination position
+			theta: the starting angle
+			l: width between wheels
+		output:
+			ratio = vr / vl: the ratio of velocity of the two wheels
+	"""
+	gama = atan((y_dst - y)/(x_dst - x))
+	omega = 2*(gama - theta)
+	d = sqrt((x_dst - x)**2 + (y_dst - y)**2)
+	
+	k = d / (l * sin(omega / 2))
+	ratio = (k+1)/(k-1)
+	
+	return ratio
 
-print("---------------------------")
-print("Demoing Forward kinematics:")
-print("Starting point {}".format([0,0,np.pi/2]))
+def differential_drive_test():
 
-print("drive straigt {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, np.pi, np.pi, 1)))
+	print("---------------------------")
+	print("Demoing Forward kinematics:")
+	print("Starting point {}".format([0,0,np.pi/2]))
 
-print("pivot left on left wheel {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, 0, np.pi, 1)))
+	print("drive straigt {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, np.pi, np.pi, 1)))
 
-print("pivot right on right wheel {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, np.pi, 0, 1)))
+	print("pivot left on left wheel {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, 0, np.pi, 1)))
 
-print("Rotate right (clockwise) {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, np.pi, -np.pi, 1)))
+	print("pivot right on right wheel {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, np.pi, 0, 1)))
 
-print("Rotate left (counterclockwise) {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, -np.pi, np.pi, 1)))
+	print("Rotate right (clockwise) {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, np.pi, -np.pi, 1)))
 
-print("Curve to the left {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, np.pi, 1.1*np.pi, 1)))
+	print("Rotate left (counterclockwise) {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, -np.pi, np.pi, 1)))
 
-print("Curve to the right {}".format(
-    diff_drive_fk(0,0,4,np.pi/2, 1.1*np.pi, np.pi, 1)))
-print("--------------------------")
+	print("Curve to the left {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, np.pi, 1.1*np.pi, 1)))
+
+	print("Curve to the right {}".format(
+		diff_drive_fk(0,0,4,np.pi/2, 1.1*np.pi, np.pi, 1)))
+	print("--------------------------")
+
+def inverse_kinematics_test():
+	x = 0
+	y = 0
+	theta = pi/3
+	x_dst = 15
+	y_dst = 10
+	l = 1
+	plt.plot([x,x_dst], [y,y_dst])
+	ratio = inverse_kinematics_drive(x,y,x_dst,y_dst,theta,l)
+	trace_x = []
+	trace_y = []
+	x_tmp = x
+	y_tmp = y
+	theta_tmp = theta
+	for i in range(20):
+		[x_tmp,y_tmp,theta_tmp] = diff_drive_fk(x_tmp,y_tmp, l,theta_tmp, 1, ratio, 1)
+		trace_x.append(x_tmp)
+		trace_y.append(y_tmp)
+	plt.plot(trace_x,trace_y,'ro')
+	plt.show()
+
+if __name__ == "__main__":
+	#differential_drive_test()
+	inverse_kinematics_test()
