@@ -4,10 +4,12 @@ import random
 import math
 from operator import itemgetter # for LidarMap.partition()
 
+# TODO: Find some way to associate GPS data with Lidar data.
 
-max_range = 600
+
+max_range = 600 # What is considered "infinity"
 N = 15 # number of objects to add
-max_variance = 15
+max_variance = 15 # How rough can surface of terrain be
 
 class LidarMap():
 
@@ -18,6 +20,7 @@ class LidarMap():
     def update(self):
         ''' Update internal data structure.
             This can be time consuming.  '''
+        # TODO: optimize?
         self.angles = list(self.data.keys())
         self.angles.sort()
         self.distances = list(self.data.values())
@@ -25,7 +28,17 @@ class LidarMap():
         self.partition()
 
     def distance(self, angle):
+        ''' Returns the distance at the given angle '''
+        # TODO: If :angle: is not in our map,
+        # interpolate what it should be.
         return self.data[angle]
+
+    def angle_snap(self, angle):
+        ''' If :angle: is not in self.data,
+            return the angle int self.data
+            that is closest to :angle:.
+        '''
+        raise NotImplementedError()
 
     def set_point(self, angle, distance, do_update=True):
         ''' Add a new data point or update an existing one.
@@ -42,6 +55,9 @@ class LidarMap():
 
     def slice(self, start, end):
         ''' Returns a list of all angles in the range start to end '''
+        # TODO: is there a __magic__ method that we can define
+        # so that we can use pythons slice syntax? ( my_list[2:5] )
+        # TODO: What should we do if end < start?
         seg = []
         for a in list(self.data.keys()):
             if start <= a <= end:
@@ -61,11 +77,16 @@ class LidarMap():
                 i += 1
             return self.angles[i]
 
+    def previous(self, angle):
+        ''' Same as next, but for the previous angle'''
+        raise NotImplementedError()
+
     def partition(self):
         ''' Divides map into sections by finding points that undergo a
             sharp change in distance, indicating the possibility
             of object boundries.
         '''
+        # TODO: optimize?
         self.edges = []
         for x in self.slice(0,359):
             a = self.distance(x)
@@ -86,6 +107,7 @@ class LidarMap():
             and store a version of the partition map
             sorted farthest to closest.
         '''
+        # TODO: What should we do if self.partitions is []?
         self.by_farthest = sorted(self.partitions, key=itemgetter(2), reverse=True)[0]
         return self.by_farthest[0], self.by_farthest[1]
 
@@ -94,8 +116,22 @@ class LidarMap():
             and store a version of the partition map
             sorted closest to farthest.
         '''
+        # TODO: What should we do if self.partitions is []?
         self.by_closest = sorted(self.partitions, key=itemgetter(2), reverse=False)[0]
         return self.by_closest[0], self.by_closest[1]
+
+    def find_openings(self):
+        ''' Find far partitions that are sandwiched in between
+            two closer partitions. If we have the paritions:
+            [close0, far1, close2, closer3, close4, closer5, far6],
+            far1, far6, and close4 would be selected.
+        '''
+        raise NotImplementedError()
+
+######################################
+######## END class LidarMap ##########
+######################################
+
 
 def center(angle_start, angle_end):
     """ Find the center of a partition"""
@@ -123,16 +159,27 @@ def gen_map():
         # Object is located approximately here
         obj_dist = random.randrange(2*max_variance,max_range)
 
-        # how much to vary the object surface by
+        # How much to vary the object surface by
         roughness = random.randrange(1,max_variance)
 
         length = end-start
         # Add object while varying the surface
+        # TODO: All these segments are concave, most of the terrain
+        # we encounter will be convex.
+        # TODO: Generate rectangular shaped (man made) objects?
         for j in m.slice(start,end):
             m.set_point(j, obj_dist+random.randrange(-roughness,roughness), do_update=False)
     m.update()
     return m
 
+def export_map(m):
+    """ Export a lidar map to a csv file
+        (Maybe point cloud?) """
+    raise NotImplementedError()
+
+def import_map():
+    """ Read a map from disk"""
+    raise NotImplementedError()
 
 def plot_result(m, waypoints, target):
     """ Plot the map and waypoints with matplotlib"""
@@ -140,13 +187,13 @@ def plot_result(m, waypoints, target):
     way_angles = [angles[int(a)] for a in list(zip(*waypoints))[0]]
     way_dists = list(zip(*waypoints))[1]
 
-    plt.polar(angles, m.distances, 'k',# terrain
+    plt.polar(angles, m.distances, 'k.',# terrain
               way_angles, way_dists,'r', #path
               angles[target[0]], target[1], 'go')
     plt.show()
 
 def plot_map(m):
-    ''' Plots the lidar map with matplotlib'''
+    ''' Plots the lidar map with matplotlib.'''
     angles = [math.radians(x) for x in m.angles]
     plt.polar(angles, m.distances)
     plt.show()
@@ -166,6 +213,8 @@ def main():
             plot_result(m, waypoints, target)
             return
 
+    # Assume we are in a corner or cave, and try
+    # to get away from the obsticals
     deep_angle = center(*m.find_farthest_region())
     waypoints.append((deep_angle, max_range))
 
