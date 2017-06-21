@@ -47,7 +47,10 @@ def inverse_kinematics_drive(x,y,x_dst,y_dst,theta, l):
 			ratio = vr / vl: the ratio of velocity of the two wheels
 	"""
 	gama = atan((y_dst - y)/(x_dst - x))
+	if x_dst < x:
+		gama = gama + pi
 	omega = 2*(gama - theta)
+	
 	d = sqrt((x_dst - x)**2 + (y_dst - y)**2)
 	
 	k = d / (l * sin(omega / 2))
@@ -87,7 +90,7 @@ def inverse_kinematics_test():
 	x = 0
 	y = 0
 	theta = pi/3
-	x_dst = 15
+	x_dst = -15
 	y_dst = 10
 	l = 1
 	plt.plot([x,x_dst], [y,y_dst])
@@ -97,7 +100,7 @@ def inverse_kinematics_test():
 	x_tmp = x
 	y_tmp = y
 	theta_tmp = theta
-	for i in range(20):
+	for i in range(30):
 		[x_tmp,y_tmp,theta_tmp] = diff_drive_fk(x_tmp,y_tmp, l,theta_tmp, 1, ratio, 1)
 		trace_x.append(x_tmp)
 		trace_y.append(y_tmp)
