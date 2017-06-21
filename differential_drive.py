@@ -7,6 +7,8 @@ Formulas taken from this paper:
 http://www8.cs.umu.se/~thomash/reports/KinematicsEquationsForDifferentialDriveAndArticulatedSteeringUMINF-11.19.pdf
 '''
 
+
+
 def diff_drive_fk(x, y, l, theta, vl, vr, delta_t):
     """ Calculates forwark kinematics based on starting position,
         starting angle, width between wheels, velocity of wheels,
@@ -24,7 +26,7 @@ def diff_drive_fk(x, y, l, theta, vl, vr, delta_t):
     else:
         R = l/2*(vl + vr)/(vr-vl)
         omega = (vr-vl)/l
-        
+
         ICC = (x-R*sin(theta), y+R*cos(theta))
         #theta = omega*delta_t + theta
         a = np.matrix([[cos(omega*delta_t), -sin(omega*delta_t), 0],
@@ -38,7 +40,7 @@ def diff_drive_fk(x, y, l, theta, vl, vr, delta_t):
 
 def inverse_kinematics_drive(x,y,x_dst,y_dst,theta, l):
 	"""
-		input: 
+		input:
 			x,y: the starting position
 			x_dst, y_dst: the destination position
 			theta: the starting angle
@@ -46,16 +48,20 @@ def inverse_kinematics_drive(x,y,x_dst,y_dst,theta, l):
 		output:
 			ratio = vr / vl: the ratio of velocity of the two wheels
 	"""
+	if x == x_dst:
+		#drive straigt forwards or backwards
+		ratio = 1
+		return ratio
 	gama = atan((y_dst - y)/(x_dst - x))
 	if x_dst < x:
 		gama = gama + pi
 	omega = 2*(gama - theta)
-	
+
 	d = sqrt((x_dst - x)**2 + (y_dst - y)**2)
-	
+
 	k = d / (l * sin(omega / 2))
 	ratio = (k+1)/(k-1)
-	
+
 	return ratio
 
 def differential_drive_test():
@@ -66,7 +72,8 @@ def differential_drive_test():
 
 	print("drive straigt {}".format(
 		diff_drive_fk(0,0,4,np.pi/2, np.pi, np.pi, 1)))
-
+	print("drive straigt backwards{}".format(
+		diff_drive_fk(0,0,4,np.pi/2, -np.pi, -np.pi, 1)))
 	print("pivot left on left wheel {}".format(
 		diff_drive_fk(0,0,4,np.pi/2, 0, np.pi, 1)))
 
@@ -84,15 +91,17 @@ def differential_drive_test():
 
 	print("Curve to the right {}".format(
 		diff_drive_fk(0,0,4,np.pi/2, 1.1*np.pi, np.pi, 1)))
+
 	print("--------------------------")
 
 def inverse_kinematics_test():
 	x = 0
 	y = 0
-	theta = pi/3
-	x_dst = -15
-	y_dst = 10
+	theta = pi/2
+	x_dst = 15
+	y_dst = -10
 	l = 1
+	speed = 1
 	plt.plot([x,x_dst], [y,y_dst])
 	ratio = inverse_kinematics_drive(x,y,x_dst,y_dst,theta,l)
 	trace_x = []
@@ -101,12 +110,12 @@ def inverse_kinematics_test():
 	y_tmp = y
 	theta_tmp = theta
 	for i in range(30):
-		[x_tmp,y_tmp,theta_tmp] = diff_drive_fk(x_tmp,y_tmp, l,theta_tmp, 1, ratio, 1)
+		[x_tmp,y_tmp,theta_tmp] = diff_drive_fk(x_tmp,y_tmp, l,theta_tmp, speed, ratio, 1)
 		trace_x.append(x_tmp)
 		trace_y.append(y_tmp)
 	plt.plot(trace_x,trace_y,'ro')
 	plt.show()
 
 if __name__ == "__main__":
-	#differential_drive_test()
+	# differential_drive_test()
 	inverse_kinematics_test()
