@@ -181,6 +181,14 @@ def import_map():
     """ Read a map from disk"""
     raise NotImplementedError()
 
+def map_to_cartesian(m, origin):
+    """ Takes points stored in a LidarMap and returns
+        a list of the points converted to cartesian coordinates
+        offset from the origin where the LidarMap is taken from.
+    """
+    return [(m.distance(a)*math.cos(a)+origin[0],
+        m.distance(a)*math.sin(a)+origin[1]) for a in m.angles]
+
 def plot_result(m, waypoints, target):
     """ Plot the map and waypoints with matplotlib"""
     angles = np.linspace(0,np.pi*2, m.resolution)

@@ -3,12 +3,14 @@ import matplotlib.pyplot as plt
 import random
 import math
 import numpy as np
+from lidar_sim import LidarMap
+import lidar_sim
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
 def bresenhamLine(x0, y0, x1, y1):
-    ''' Cast ray from p0 to p1.
+    ''' Draw line from p0 to p1.
         Taken from: https://www.codeproject.com/Articles/15604/Ray-casting-in-a-2D-tile-based-environment
     '''
     result = []
@@ -85,18 +87,23 @@ def main():
     waypoints.append(rover_pos)
     waypoints.append(target_pos)
 
-    ray_map = []
+    distances = []
+    angles = []
     for a in np.linspace(0,2*math.pi, 200):
-        p = rayCast(rover_pos, a, 200, pixels, width-1, height-1)
+        p = rayCast(rover_pos, a, 300, pixels, width-1, height-1)
         if p is not None:
-            ray_map.append(p)
+            d = math.sqrt((rover_pos[0]-p[0])**2 + (rover_pos[1]-p[1])**2)
+            distances.append(d)
+            angles.append(a)
+    m = LidarMap(angles, distances)
+    cart_map = lidar_sim.map_to_cartesian(m, rover_pos)
 
 
     implot = plt.imshow(im)
     plt.plot(target_pos[0], target_pos[1], 'ro',
              rover_pos[0], rover_pos[1], 'co',
              *unzip_points(waypoints),
-             *unzip_points(ray_map), 'r.'
+             *unzip_points(cart_map), 'r.'
              )
     plt.show()
 
