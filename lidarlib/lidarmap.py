@@ -5,6 +5,7 @@ import math
 from operator import itemgetter # for LidarMap.partition()
 
 # TODO: Find some way to associate GPS data with Lidar data.
+# TODO: Switch to radians for angle measurements
 
 
 max_range = 600 # What is considered "infinity"
@@ -44,10 +45,9 @@ class LidarMap():
             largest_angle = self.angles[len(self.angles) - 1]
             smallest_angle = self.angles[0]
             if abs(largest_angle - angle) > abs(360 + smallest_angle - angle):
-                return smallest_angle                
+                return smallest_angle
             closet = min(range(len(self.angles)), key = lambda i: abs(self.angles[i] - angle))
             return self.angles[closet]
-		#raise NotImplementedError()
 
     def set_point(self, angle, distance, do_update=True):
         ''' Add a new data point or update an existing one.
@@ -91,11 +91,10 @@ class LidarMap():
         if angle in self.data:
             i = self.angles.index(angle)
             if i == 0:
-                return self.angles[len(self.angles) - 1]
+                return self.angles[-1]
             else:
                 return self.angles[i - 1]
-        #raise NotImplementedError()
-    
+
     def partition(self):
         ''' Divides map into sections by finding points that undergo a
             sharp change in distance, indicating the possibility
@@ -116,13 +115,13 @@ class LidarMap():
                 self.distance(self.edges[0])))
         else:
             self.partitions = []
-        
-    
+
+
     def findPartition(self, angle):
         ''' Find the partition that the input angle belongs to
         '''
         if self.partitions == []:
-            raise NotImplementedError()
+            raise RuntimeError()
         else:
             for i in range(len(self.partitions) - 1):
                 partition = self.partitions[i]
@@ -132,13 +131,13 @@ class LidarMap():
             partition = self.partitions[i]
             if angle > partition[0] or angle < partition[1]:
                 return i
-    
+
     def findNextPartition(self, i):
         if i < len(self.partitions) - 1:
             return i + 1
         else:
             return 0
-    
+
     def findPreviousPartition(self, i):
         if i == 0:
             return len(self.partitions) - 1
@@ -150,7 +149,8 @@ class LidarMap():
             and store a version of the partition map
             sorted farthest to closest.
         '''
-        # TODO: What should we do if self.partitions is []?
+        if self.partitions == []:
+            raise RuntimeError()
         self.by_farthest = sorted(self.partitions, key=itemgetter(2), reverse=True)[0]
         return self.by_farthest[0], self.by_farthest[1]
 
@@ -159,15 +159,16 @@ class LidarMap():
             and store a version of the partition map
             sorted closest to farthest.
         '''
-        # TODO: What should we do if self.partitions is []?
+        if self.partitions == []:
+            raise RuntimeError()
         self.by_closest = sorted(self.partitions, key=itemgetter(2), reverse=False)[0]
         return self.by_closest[0], self.by_closest[1]
-    
+
     def find_opening(self, angle):
         ''' Find the closet partition that is more far than the partition in the target angle
         '''
         if self.partitions == []:
-            raise NotImplementedError()
+            raise RuntimeError()
         else:
             i = self.findPartition(angle)
             partition = self.partitions[i]
@@ -192,7 +193,7 @@ class LidarMap():
 
 
 def center(angle_start, angle_end):
-    """ Find the center of a partition"""
+    """ Find the center of an angle."""
     if angle_start > angle_end:
         angle = (angle_end+360+angle_start)/2
         if angle >= 360:
@@ -247,22 +248,6 @@ def map_to_cartesian(m, origin):
     return [(m.distance(a)*math.cos(a)+origin[0],
         m.distance(a)*math.sin(a)+origin[1]) for a in m.angles]
 
-def plot_result(m, waypoints, target):
-    """ Plot the map and waypoints with matplotlib"""
-    angles = np.linspace(0,np.pi*2, m.resolution)
-    way_angles = [angles[int(a)] for a in list(zip(*waypoints))[0]]
-    way_dists = list(zip(*waypoints))[1]
-
-    plt.polar(angles, m.distances, 'k.',# terrain
-              way_angles, way_dists,'r', #path
-              angles[target[0]], target[1], 'go')
-    plt.show()
-
-def plot_map(m):
-    ''' Plots the lidar map with matplotlib.'''
-    angles = [math.radians(x) for x in m.angles]
-    plt.polar(angles, m.distances)
-    plt.show()
 
 def main():
     ''' Path finding algorithm.'''
@@ -289,4 +274,5 @@ def main():
             plot_result(m, waypoints, target)
 
 if __name__ == '__main__':
-    main()
+    from test import test_lidarmap
+    test_lidarmap()

@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import math
 import numpy as np
-from lidar_sim import LidarMap
-import lidar_sim
+from lidarmap import LidarMap, map_to_cartesian
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
@@ -65,9 +64,23 @@ def unzip_points(l):
     '''
     return list(zip(*l))[0], list(zip(*l))[1],
 
+def rand_open_point(im):
+    ''' Returns a random point in an image that
+        is not terrain. Terrain is signified by black pixels.
+    '''
+    width = im.size[0]
+    height = im.size[1]
+    pixels = im.load()
+    point = (random.randrange(0,width), random.randrange(0,height))
+    while pixels[point[0], point[1]] == BLACK:
+        point = (random.randrange(0,width), random.randrange(0,height))
+    return point
 
-def main():
-    im = Image.open('map_test.png')
+
+def gen_map_from_image(im, rover_pos):
+    ''' Generates a LidarMap from an image by using
+        ray casting from the rovers position.
+    '''
     width = im.size[0]
     height = im.size[1]
     pixels = im.load()
@@ -75,17 +88,6 @@ def main():
     # data = []
     # for y in range(0, height):
     #     data.append([pix[x,y] for x in range(0,width)])
-
-    waypoints = []
-
-    target_pos = (random.randrange(0,width), random.randrange(0,height))
-    rover_pos = (random.randrange(0,width), random.randrange(0,height))
-    while pixels[target_pos[0], target_pos[1]] == BLACK:
-        target_pos = (random.randrange(0,width), random.randrange(0,height))
-    while pixels[rover_pos[0], rover_pos[1]] == BLACK:
-        rover_pos = (random.randrange(0,width), random.randrange(0,height))
-    waypoints.append(rover_pos)
-    waypoints.append(target_pos)
 
     distances = []
     angles = []
@@ -95,10 +97,21 @@ def main():
             d = math.sqrt((rover_pos[0]-p[0])**2 + (rover_pos[1]-p[1])**2)
             distances.append(d)
             angles.append(a)
-    m = LidarMap(angles, distances)
-    cart_map = lidar_sim.map_to_cartesian(m, rover_pos)
+    return LidarMap(angles, distances)
 
+def plot_result(m, waypoints, target):
+    """ Plot the map and waypoints with matplotlib"""
+    angles = np.linspace(0,np.pi*2, m.resolution)
+    way_angles = [angles[int(a)] for a in list(zip(*waypoints))[0]]
+    way_dists = list(zip(*waypoints))[1]
 
+    plt.polar(angles, m.distances, 'k.',# terrain
+              way_angles, way_dists,'r', #path
+              angles[target[0]], target[1], 'go')
+    plt.show()
+
+def plot_with_image(m, im, rover_pos, target_pos, waypoints):
+    cart_map = map_to_cartesian(m, rover_pos)
     implot = plt.imshow(im)
     plt.plot(target_pos[0], target_pos[1], 'ro',
              rover_pos[0], rover_pos[1], 'co',
@@ -107,5 +120,14 @@ def main():
              )
     plt.show()
 
+
+def plot_map(m):
+    ''' Plots the lidar map with matplotlib.'''
+    angles = [math.radians(x) for x in m.angles]
+    plt.polar(angles, m.distances)
+    plt.show()
+
+
 if __name__ == '__main__':
-    main()
+    from test import test_lidarimage
+    test_lidarimage()
