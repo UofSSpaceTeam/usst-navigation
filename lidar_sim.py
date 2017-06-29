@@ -38,7 +38,16 @@ class LidarMap():
             return the angle int self.data
             that is closest to :angle:.
         '''
-        raise NotImplementedError()
+        if angle in self.data:
+            return angle
+        else:
+            largest_angle = self.angles[len(self.angles) - 1]
+            smallest_angle = self.angles[0]
+            if abs(largest_angle - angle) > abs(360 + smallest_angle - angle):
+                return smallest_angle                
+            closet = min(range(len(self.angles)), key = lambda i: abs(self.angles[i] - angle))
+            return self.angles[closet]
+		#raise NotImplementedError()
 
     def set_point(self, angle, distance, do_update=True):
         ''' Add a new data point or update an existing one.
@@ -79,8 +88,14 @@ class LidarMap():
 
     def previous(self, angle):
         ''' Same as next, but for the previous angle'''
-        raise NotImplementedError()
-
+        if angle in self.data:
+            i = self.angles.index(angle)
+            if i == 0:
+                return self.angles[len(self.angles) - 1]
+            else:
+                return self.angles[i - 1]
+        #raise NotImplementedError()
+    
     def partition(self):
         ''' Divides map into sections by finding points that undergo a
             sharp change in distance, indicating the possibility
@@ -101,6 +116,34 @@ class LidarMap():
                 self.distance(self.edges[0])))
         else:
             self.partitions = []
+        
+    
+    def findPartition(self, angle):
+        ''' Find the partition that the input angle belongs to
+        '''
+        if self.partitions == []:
+            raise NotImplementedError()
+        else:
+            for i in range(len(self.partitions) - 1):
+                partition = self.partitions[i]
+                if angle > partition[0] and angle < partition[1]:
+                    return i
+            i = len(self.partitions) - 1
+            partition = self.partitions[i]
+            if angle > partition[0] or angle < partition[1]:
+                return i
+    
+    def findNextPartition(self, i):
+        if i < len(self.partitions) - 1:
+            return i + 1
+        else:
+            return 0
+    
+    def findPreviousPartition(self, i):
+        if i == 0:
+            return len(self.partitions) - 1
+        else:
+            return i - 1
 
     def find_farthest_region(self):
         ''' Find region that farthest away from us,
@@ -119,14 +162,29 @@ class LidarMap():
         # TODO: What should we do if self.partitions is []?
         self.by_closest = sorted(self.partitions, key=itemgetter(2), reverse=False)[0]
         return self.by_closest[0], self.by_closest[1]
-
-    def find_openings(self):
-        ''' Find far partitions that are sandwiched in between
-            two closer partitions. If we have the paritions:
-            [close0, far1, close2, closer3, close4, closer5, far6],
-            far1, far6, and close4 would be selected.
+    
+    def find_opening(self, angle):
+        ''' Find the closet partition that is more far than the partition in the target angle
         '''
-        raise NotImplementedError()
+        if self.partitions == []:
+            raise NotImplementedError()
+        else:
+            i = self.findPartition(angle)
+            partition = self.partitions[i]
+            if (angle - partition[0]) % 360 < (partition[1] - angle) % 360:
+                previous = self.findPreviousPartition(i)
+                pre_partition = self.partitions[previous]
+                if partition[2] > pre_partition[2]:
+                    return partition[0], partition[2]
+                else:
+                    return pre_partition[1], pre_partition[2]
+            else:
+                next = self.findNextPartition(i)
+                next_partition = self.partitions[next]
+                if partition[2] > next_partition[2]:
+                    return partition[1], partition[2]
+                else:
+                    return next_partition[0], next_partition[2]
 
 ######################################
 ######## END class LidarMap ##########
@@ -206,19 +264,21 @@ def main():
     waypoints = [(0,0)]
 
     # First check if we can see the position
-    for x in range(0,360):
-        if x == target[0] and target[1] < m.distance(x):
-            waypoints.append(target)
-            # target within view exit early
+    if target[1] < m.distance(m.angle_snap(target[0])):
+        waypoints.append(target)
+        # target within view exit early
+        plot_result(m, waypoints, target)
+    else:
+        opening = m.find_opening(target[0])
+        if opening is not None:
+            waypoints.append(opening)
             plot_result(m, waypoints, target)
-            return
-
-    # Assume we are in a corner or cave, and try
-    # to get away from the obsticals
-    deep_angle = center(*m.find_farthest_region())
-    waypoints.append((deep_angle, max_range))
-
-    plot_result(m, waypoints, target)
+        else:
+            # Assume we are in a corner or cave, and try
+            # to get away from the obsticals
+            deep_angle = center(*m.find_farthest_region())
+            waypoints.append((deep_angle, max_range))
+            plot_result(m, waypoints, target)
 
 if __name__ == '__main__':
     main()
