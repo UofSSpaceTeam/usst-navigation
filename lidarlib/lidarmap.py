@@ -3,6 +3,7 @@ import numpy as np
 import random
 import math
 from operator import itemgetter # for LidarMap.partition()
+import json
 
 # TODO: Find some way to associate GPS data with Lidar data.
 # TODO: Switch to radians for angle measurements
@@ -231,14 +232,21 @@ def gen_map():
     m.update()
     return m
 
-def export_map(m):
+def export_map(m, pathname):
     """ Export a lidar map to a csv file
         (Maybe point cloud?) """
-    raise NotImplementedError()
+    f = open(pathname, 'w')
+    cart = map_to_cartesian(m, (0,0))
+    # for p in cart:
+    #     f.write("{} {}\n".format(p[0], p[1]))
+    json.dump(cart, f)
 
-def import_map():
+
+def import_map(pathname):
     """ Read a map from disk"""
-    raise NotImplementedError()
+    f = open(pathname, 'r')
+    cart = json.load(f)
+    return cartesian_to_map(cart, (0,0))
 
 def map_to_cartesian(m, origin):
     """ Takes points stored in a LidarMap and returns
@@ -247,6 +255,18 @@ def map_to_cartesian(m, origin):
     """
     return [(m.distance(a)*math.cos(a)+origin[0],
         m.distance(a)*math.sin(a)+origin[1]) for a in m.angles]
+
+def cartesian_to_map(cart, origin):
+    angles = []
+    distances = []
+    for p in cart:
+        a = math.atan2(origin[1]-p[1], origin[0]-p[0])
+        d = math.sqrt((origin[0]-p[0])**2 + (origin[1]-p[1])**2)
+        if a < 0:
+            a += 2*math.pi
+        angles.append(int(math.degrees(a)))
+        distances.append(d)
+    return LidarMap(angles, distances)
 
 
 def main():
@@ -274,5 +294,13 @@ def main():
             plot_result(m, waypoints, target)
 
 if __name__ == '__main__':
-    from test import test_lidarmap
-    test_lidarmap()
+    m = gen_map()
+    export_map(m, "output.json")
+    m1 = import_map("output.json")
+    for a in m.angles:
+        if a not in m1.angles:
+            print(a)
+    print(m1.angles)
+
+    # from test import test_lidarmap
+    # test_lidarmap()
