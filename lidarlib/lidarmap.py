@@ -4,6 +4,7 @@ import random
 import math
 from operator import itemgetter # for LidarMap.partition()
 import json
+# from lidarimage import plot_result
 
 # TODO: Find some way to associate GPS data with Lidar data.
 # TODO: Switch to radians for angle measurements
@@ -15,8 +16,9 @@ max_variance = 15 # How rough can surface of terrain be
 
 class LidarMap():
 
-    def __init__(self, angles, distances):
+    def __init__(self, angles, distances, position=(0,0)):
         self.data = {angle:distance for (angle,distance) in zip(angles, distances)}
+        self.position=position # position the map was taken from
         self.update()
 
     def update(self):
@@ -30,10 +32,20 @@ class LidarMap():
         self.partition()
 
     def distance(self, angle):
-        ''' Returns the distance at the given angle '''
-        # TODO: If :angle: is not in our map,
-        # interpolate what it should be.
-        return self.data[angle]
+        ''' Returns the distance at the given angle.
+            If the angle is not stored in the data structure,
+            try to interpolate the value. (Currently very simple,
+            not accurate at all).
+        '''
+        if angle in self.data:
+            return self.data[angle]
+        else:
+            a1 = self.angle_snap(angle)
+            a2 = self.next(a1)
+            a = abs(a1-a2)/2
+            h = self.distance(a1)
+            return h*math.cos(math.radians(a))
+
 
     def angle_snap(self, angle):
         ''' If :angle: is not in self.data,
@@ -45,10 +57,12 @@ class LidarMap():
         else:
             largest_angle = self.angles[len(self.angles) - 1]
             smallest_angle = self.angles[0]
+            # print("largest_angle: {}, smallest_angle: {}".format(largest_angle, smallest_angle) )
             if abs(largest_angle - angle) > abs(360 + smallest_angle - angle):
                 return smallest_angle
-            closet = min(range(len(self.angles)), key = lambda i: abs(self.angles[i] - angle))
-            return self.angles[closet]
+            closest = min(range(len(self.angles)), key = lambda i: abs(self.angles[i] - angle))
+            # print("closest {}".format(closest))
+            return self.angles[closest]
 
     def set_point(self, angle, distance, do_update=True):
         ''' Add a new data point or update an existing one.
@@ -62,6 +76,11 @@ class LidarMap():
         self.data[angle] = distance
         if should_update:
             self.update()
+
+    def cartesian_point(self, angle):
+        x = self.position[0] + self.distance(angle)*math.cos(math.radians(angle))
+        y = self.position[1] + self.distance(angle)*math.sin(math.radians(angle))
+        return (x,y)
 
     def slice(self, start, end):
         ''' Returns a list of all angles in the range start to end '''
