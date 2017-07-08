@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import math
 import numpy as np
-from lidarmap import LidarMap, map_to_cartesian
+#from lidarmap import LidarMap, map_to_cartesian
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
