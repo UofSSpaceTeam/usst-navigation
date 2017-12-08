@@ -1,8 +1,8 @@
 import vrep
 import sys
 import time
-import numpy as np
-import matplotlib.pyplot as plt
+
+
 
 
 vrep.simxFinish(-1) # just in case, close all opened connections
@@ -16,7 +16,7 @@ else:
 
 
 # Get object handles
-err, wheelLB = vrep.simxGetObjectHandle(clientID, "wheelLB",
+err, wheelLB = vrep.simxGetObjectHandle(clientID, "wheelLB", #wheelLB looks in object list in vrep
                                         vrep.simx_opmode_oneshot_wait)
 err, wheelLF = vrep.simxGetObjectHandle(clientID, "wheelLF",
                                         vrep.simx_opmode_oneshot_wait)
@@ -25,6 +25,9 @@ err, wheelRB = vrep.simxGetObjectHandle(clientID, "wheelRB",
 err, wheelRF = vrep.simxGetObjectHandle(clientID, "wheelRF",
                                         vrep.simx_opmode_oneshot_wait)
 err, GPS = vrep.simxGetObjectHandle(clientID, "GPS",
+                                        vrep.simx_opmode_oneshot_wait)
+
+err, Barnstormer = vrep.simxGetObjectHandle(clientID, "Barnstormer",
                                         vrep.simx_opmode_oneshot_wait)
 
 
@@ -59,9 +62,11 @@ def read_gyro():
     err, z = vrep.simxGetFloatSignal(clientID, 'Gyro/z', vrep.simx_opmode_oneshot_wait)
     return [x, y, z]
 
-
+def set_rover_position(x, y, z):
+    err =vrep.simxSetObjectPosition(clientID, Barnstormer, -1, (x,y, z), vrep.simx_opmode_oneshot)
 
 def main():
+    set_rover_position(0,0,0.25)
     while True:
         drive_forward(0.1)
         print("GPS: ", read_gps())
