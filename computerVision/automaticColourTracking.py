@@ -36,11 +36,14 @@ for i in range(50):
     threshold[3] = (threshold[3] + hi.a_value()) // 2
     threshold[4] = (threshold[4] + lo.b_value()) // 2
     threshold[5] = (threshold[5] + hi.b_value()) // 2
-    print('0:',threshold[0],'\n1:',threshold[1],'\n2:',threshold[2],'\n3:',threshold[3],'\n4:',threshold[4],'\n5:',threshold[5])
+    # print('0:',threshold[0],'\n1:',threshold[1],'\n2:',threshold[2],'\n3:',threshold[3],'\n4:',threshold[4],'\n5:',threshold[5])
+    f = open('testFile.txt','w')
+    f.write(str(threshold[0])+ "," + str(threshold[1]))
     for blob in img.find_blobs([threshold], pixels_threshold=50, area_threshold=50, merge=True, margin=10):
         img.draw_rectangle(blob.rect())
         img.draw_cross(blob.cx(), blob.cy())
         img.draw_rectangle(r)
+    f.close()
 
 
 
