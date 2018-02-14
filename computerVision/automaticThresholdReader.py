@@ -1,15 +1,40 @@
 # This program reads a .txt file of threshold numbers generated from automaticThresholdInitializer.py
 
+# define average function (can be replaced later)
+def average(allThresholds):
+    lMin = []
+    lMax = []
+    aMin = []
+    aMax = []
+    bMin = []
+    bMax = []
+    for a,b,c,d,e in allThresholds:
+        lMin.append(a)
+        lMax.append(b)
+        aMin.append(c)
+        aMax.append(d)
+        bMin.append(e)
+        bMax.append(f)
+
+    finalThresholdAvg = [lMin,lMax,aMin,aMax,bMin,bMax]
+    for index in range(len(finalThresholdAvg)):
+        finalThresholdAvg[index] = sum(finalThresholdAvg[index]) / len(finalThresholdAvg[index])
+
+    return finalThresholdAvg
+
+
 
 #read text file
+allThresholds = []
 file = open("thresholds.txt",'r')
 for line in file:
-    line = line.rstrip().split(",")
+    allThresholds += [int(x) for x in line.rstrip().split(",")]
+
+#create averages
+threshold = average(allThresholds)
 
 
-
-
-
+# run colour tracker
 print("Thresholds learned...")
 print("Tracking colors...")
 
