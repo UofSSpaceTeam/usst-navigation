@@ -2,7 +2,7 @@ import vrep
 import sys
 import time
 
-
+from robocluster import Device
 
 
 vrep.simxFinish(-1) # just in case, close all opened connections
@@ -15,34 +15,25 @@ else:
     print("Connected with clientID {}".format(clientID))
 
 
-# Get object handles
-err, wheelLB = vrep.simxGetObjectHandle(clientID, "wheelLB", #wheelLB looks in object list in vrep
-                                        vrep.simx_opmode_oneshot_wait)
-err, wheelLF = vrep.simxGetObjectHandle(clientID, "wheelLF",
-                                        vrep.simx_opmode_oneshot_wait)
-err, wheelRB = vrep.simxGetObjectHandle(clientID, "wheelRB",
-                                        vrep.simx_opmode_oneshot_wait)
-err, wheelRF = vrep.simxGetObjectHandle(clientID, "wheelRF",
-                                        vrep.simx_opmode_oneshot_wait)
 err, GPS = vrep.simxGetObjectHandle(clientID, "GPS",
                                         vrep.simx_opmode_oneshot_wait)
 
 err, Barnstormer = vrep.simxGetObjectHandle(clientID, "Barnstormer",
                                         vrep.simx_opmode_oneshot_wait)
 
+wheel_names = ['wheelLB', 'wheelLF', 'wheelRB', 'wheelRF']
+wheels = {}
+for name in wheel_names:
+    err, wheels[name] = vrep.simxGetObjectHandle(clientID, name,
+                                            vrep.simx_opmode_oneshot_wait)
 
-def drive_forward(speed):
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelLB, speed, vrep.simx_opmode_oneshot)
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelLF, speed, vrep.simx_opmode_oneshot)
-    # for some reason right wheels are backward, not sure how to fix in vrep
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelRB, -speed, vrep.simx_opmode_oneshot)
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelRF, -speed, vrep.simx_opmode_oneshot)
+def turn_wheel(wheel, speed):
+    err = vrep.simxSetJointTargetVelocity(clientID, wheels[wheel], speed, vrep.simx_opmode_oneshot)
+
 
 def stop():
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelLB, 0, vrep.simx_opmode_oneshot_wait)
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelLF, 0, vrep.simx_opmode_oneshot_wait)
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelRB, 0, vrep.simx_opmode_oneshot_wait)
-    err = vrep.simxSetJointTargetVelocity(clientID, wheelRF, 0, vrep.simx_opmode_oneshot_wait)
+    for wheel in wheel_names:
+        turn_wheel(wheel, 0)
 
 def read_gps():
     err, x = vrep.simxGetFloatSignal(clientID, 'GPS/x', vrep.simx_opmode_oneshot_wait)
@@ -65,18 +56,52 @@ def read_gyro():
 def set_rover_position(x, y, z):
     err =vrep.simxSetObjectPosition(clientID, Barnstormer, -1, (x,y, z), vrep.simx_opmode_oneshot)
 
+vrepdevice = Device('vrepdevice', 'rover')
+example_device = Device('example', 'rover')
+
+@vrepdevice.on('*/wheel*')
+def rpm(event, data):
+    e = event.split('/')
+    print(e[1])
+    turn_wheel(e[1], data)
+
+@vrepdevice.every('100ms')
+async def get_gps():
+    await vrepdevice.publish('GPS', read_gps())
+
+@vrepdevice.every('100ms')
+async def get_Accel():
+    await vrepdevice.publish('Accel', read_accel())
+
+# @example_device.every('100ms')
+async def pub():
+    await example_device.publish('wheelRB', -0.5)
+    await example_device.publish('wheelRF', -0.5)
+    await example_device.publish('wheelLB', 0.5)
+    await example_device.publish('wheelLF', 0.5)
+
+@example_device.on('*/joystick1')
+async def translate(event, data):
+    await example_device.publish('wheelRB', 2*data[1])
+    await example_device.publish('wheelRF', 2*data[1])
+
+@example_device.on('*/joystick2')
+async def translate(event, data):
+    await example_device.publish('wheelLB', -2*data[1])
+    await example_device.publish('wheelLF', -2*data[1])
+
 def main():
-    set_rover_position(0,0,0.25)
-    while True:
-        drive_forward(0.1)
-        print("GPS: ", read_gps())
-        print("Accel: ", read_accel())
-        print("Gyro: ", read_gyro())
+    vrepdevice.start()
+    example_device.start()
+    vrepdevice.wait()
+    example_device.wait()
 
 if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
         stop()
+        vrepdevice.stop()
+        example_device.stop()
         vrep.simxFinish(-1)
         sys.exit(0)
