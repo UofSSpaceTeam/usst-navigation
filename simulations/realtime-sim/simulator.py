@@ -1,4 +1,5 @@
 import math
+import random
 
 from robocluster import Device
 from GPSPosition import GPSPosition
@@ -28,13 +29,18 @@ class Rover:
         self.position = n_gps
         self.heading = -math.degrees(next_pose[2] - math.pi/2)
 
+def simulate_piksi(gpsPosition):
+    stddev_lat = 1.663596084712623e-05
+    stddev_lon = 2.1743680968892167e-05
+    return [random.gauss(gpsPosition.lat, stddev_lat),
+            random.gauss(gpsPosition.lon, stddev_lon)]
 
 simDevice = Device('simDevice', 'rover')
 
 # Rover parameters
 simDevice.storage.rover = Rover()
-simDevice.storage.rover.wheelspeed = [1, 1]
-simDevice.storage.rover.heading = 90
+simDevice.storage.rover.wheelspeed = [0, 0]
+simDevice.storage.rover.heading = 0
 
 DELTA_T = 0.2
 @simDevice.every(DELTA_T)
@@ -47,7 +53,9 @@ async def update():
 @simDevice.every(DELTA_T)
 async def publish_state():
     position = simDevice.storage.rover.position
-    await simDevice.publish("GPSPosition", [position.lat, position.lon])
+    noisy_pos = simulate_piksi(position)
+    print(noisy_pos)
+    await simDevice.publish("GPSPosition", noisy_pos)
 
 @simDevice.on('*/wheelLF')
 def update_wheel_l(event, data):
