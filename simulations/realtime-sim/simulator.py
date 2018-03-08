@@ -1,5 +1,6 @@
 import math
 import random
+import time
 
 from robocluster import Device
 from GPSPosition import GPSPosition
@@ -9,13 +10,19 @@ class Rover:
 
     def __init__(self):
         self.position = GPSPosition(52.132653, -106.628012)
-        self.heading = 0
+        self.prev_pos = self.position
+        self.heading = 0 # degress, north = 0
         self.wheelspeed = [0, 0]
-        self.wheel_radius = 0.5
+        self.prev_wheelspeed = self.wheelspeed
+        self.wheel_radius = 0.26 # meters
         self.wheel_axis = 1
+        self.velocity = [0,0]
+        self.acceleration = [0,0]
 
 
     def update(self, dt):
+        delta_wheelspeed = [self.wheelspeed[0]-self.prev_wheelspeed[0],
+                            self.wheelspeed[1]-self.prev_wheelspeed[1]]
         next_pose = diff_drive_fk(0, 0,
                 self.wheel_axis,
                 -math.radians(self.heading)+math.pi/2,
@@ -23,11 +30,18 @@ class Rover:
                 self.wheelspeed[1],
                 dt)
         bearing = -math.degrees(math.atan2(next_pose[1], next_pose[0]) - math.pi/2)
-        print(bearing)
         distance = math.sqrt(next_pose[0]**2 + next_pose[1]**2)
         n_gps = self.position.gpsPosition(bearing, distance)
+        n_velocity = [next_pose[0]*dt, next_pose[1]*dt]
+        self.acceleration = [n_velocity[0]-self.velocity[0],
+                             n_velocity[1]-self.velocity[1]]
+
         self.position = n_gps
         self.heading = -math.degrees(next_pose[2] - math.pi/2)
+
+        self.prev_wheelspeed = self.wheelspeed
+        self.velocity = n_velocity
+
 
 def simulate_piksi(gpsPosition):
     stddev_lat = 1.663596084712623e-05
@@ -42,20 +56,26 @@ simDevice.storage.rover = Rover()
 simDevice.storage.rover.wheelspeed = [0, 0]
 simDevice.storage.rover.heading = 0
 
-DELTA_T = 0.2
+DELTA_T = 0.1
 @simDevice.every(DELTA_T)
 async def update():
     simDevice.storage.rover.update(DELTA_T)
+    # simDevice.storage.rover.wheelspeed = [x+0.1 for x in simDevice.storage.rover.wheelspeed]
     print('position', simDevice.storage.rover.position)
     print('wheel speed', simDevice.storage.rover.wheelspeed)
     print('heading', simDevice.storage.rover.heading)
+    print('accleration', simDevice.storage.rover.acceleration)
 
 @simDevice.every(DELTA_T)
 async def publish_state():
     position = simDevice.storage.rover.position
+    pos_list = [position.lat, position.lon]
     noisy_pos = simulate_piksi(position)
-    print(noisy_pos)
-    await simDevice.publish("GPSPosition", noisy_pos)
+    # print(noisy_pos)
+    await simDevice.publish("GPSPosition", pos_list)
+    accel = simDevice.storage.rover.acceleration
+    # print(accel)
+    await simDevice.publish("Acceleration", accel)
 
 @simDevice.on('*/wheelLF')
 def update_wheel_l(event, data):
