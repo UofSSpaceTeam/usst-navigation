@@ -28,7 +28,8 @@ for name in wheel_names:
                                             vrep.simx_opmode_oneshot_wait)
 
 def turn_wheel(wheel, speed):
-    err = vrep.simxSetJointTargetVelocity(clientID, wheels[wheel], speed, vrep.simx_opmode_oneshot)
+    if wheel in wheel_names:
+        err = vrep.simxSetJointTargetVelocity(clientID, wheels[wheel], speed, vrep.simx_opmode_oneshot)
 
 
 def stop():
@@ -62,12 +63,13 @@ example_device = Device('example', 'rover')
 @vrepdevice.on('*/wheel*')
 def rpm(event, data):
     e = event.split('/')
-    print(e[1])
+    # print(e[1])
     turn_wheel(e[1], data)
 
 @vrepdevice.every('100ms')
 async def get_gps():
-    await vrepdevice.publish('GPS', read_gps())
+    rover_pos = read_gps()
+    await vrepdevice.publish('GPSPos', rover_pos)
 
 @vrepdevice.every('100ms')
 async def get_Accel():
@@ -80,17 +82,18 @@ async def pub():
     await example_device.publish('wheelLB', 0.5)
     await example_device.publish('wheelLF', 0.5)
 
-@example_device.on('*/joystick1')
+# @example_device.on('*/joystick2')
 async def translate(event, data):
-    await example_device.publish('wheelRB', 2*data[1])
-    await example_device.publish('wheelRF', 2*data[1])
+    await example_device.publish('wheelRB', 4*data[1])
+    await example_device.publish('wheelRF', 4*data[1])
 
-@example_device.on('*/joystick2')
+# @example_device.on('*/joystick1')
 async def translate(event, data):
-    await example_device.publish('wheelLB', -2*data[1])
-    await example_device.publish('wheelLF', -2*data[1])
+    await example_device.publish('wheelLB', -4*data[1])
+    await example_device.publish('wheelLF', -4*data[1])
 
 def main():
+    stop()
     vrepdevice.start()
     example_device.start()
     vrepdevice.wait()
