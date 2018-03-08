@@ -49,6 +49,13 @@ def simulate_piksi(gpsPosition):
     return [random.gauss(gpsPosition.lat, stddev_lat),
             random.gauss(gpsPosition.lon, stddev_lon)]
 
+def simulate_bno(accel):
+    stddev_x = 0.025842126805189967
+    stddev_y = 0.03368775942186025
+    stddev_z = 0.038244224565556637
+    return [random.gauss(accel[0], stddev_x),
+            random.gauss(accel[1], stddev_y)]
+
 simDevice = Device('simDevice', 'rover')
 
 # Rover parameters
@@ -72,8 +79,9 @@ async def publish_state():
     pos_list = [position.lat, position.lon]
     noisy_pos = simulate_piksi(position)
     # print(noisy_pos)
-    await simDevice.publish("GPSPosition", pos_list)
+    await simDevice.publish("GPSPosition", noisy_pos)
     accel = simDevice.storage.rover.acceleration
+    accel = simulate_bno(accel)
     # print(accel)
     await simDevice.publish("Acceleration", accel)
 
