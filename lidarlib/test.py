@@ -1,4 +1,4 @@
-from lidarmap import gen_map, center, max_range
+from lidarmap import gen_map, center, max_range,PathFinding
 from lidarimage import rand_open_point, plot_with_image, gen_map_from_image,\
         plot_result
 from PIL import Image
@@ -41,6 +41,7 @@ def test_lidarimage():
     m = gen_map_from_image(im, rover_pos)
     plot_with_image(m, im, rover_pos, target_pos, waypoints)
 
+<<<<<<< HEAD
 def test_image_pathing():
     im = Image.open('map_test.png')
 
@@ -82,9 +83,33 @@ def test_image_pathing():
             plot_with_image(m, im, rover_pos, target_pos, waypoints)
 
 
+=======
+def test_associateGPS():
+    target_pos = GPSPosition(50+random.randrange(1,1000)/1000, -111+random.randrange(1,1000)/1000)
+    rover_pos = GPSPosition(50+random.randrange(1,1000)/1000, -111+random.randrange(1,1000)/1000)
+    heading = random.randrange(0,360)
+    #target_pos = GPSPosition(51,-112)
+    #rover_pos = GPSPosition(51.0001,-112)
+    
+    angle = math.degrees(rover_pos.bearing(target_pos)) - heading
+    if angle < 0:
+        angle = angle + 360
+    distance = rover_pos.distance(target_pos)
+    if distance > max_range:
+        distance = max_range
+    m = gen_map()
+    lidar_target = (m.angle_snap(angle), distance)
+    
+    waypoints = PathFinding(lidar_target, m)
+    plot_result(m, waypoints, lidar_target)
+>>>>>>> master
 
 if __name__ == '__main__':
     # test_lidarmap()
     # test_lidarimage()
+<<<<<<< HEAD
     test_image_pathing()
 
+=======
+    #test_associateGPS()
+>>>>>>> master

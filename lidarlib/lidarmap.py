@@ -4,7 +4,7 @@ import random
 import math
 from operator import itemgetter # for LidarMap.partition()
 import json
-# from lidarimage import plot_result
+#from lidarimage import plot_result
 
 # TODO: Find some way to associate GPS data with Lidar data.
 # TODO: Switch to radians for angle measurements
@@ -13,6 +13,8 @@ import json
 max_range = 600 # What is considered "infinity"
 N = 15 # number of objects to add
 max_variance = 15 # How rough can surface of terrain be
+width = 1.5
+angle_unit = 1
 
 class LidarMap():
 
@@ -133,8 +135,106 @@ class LidarMap():
                     for i in range(0, len(self.edges)-1, 1)]
             self.partitions.append((self.edges[-1], self.edges[0],
                 self.distance(self.edges[0])))
+            self.deleteHoles()
         else:
             self.partitions = []
+    
+    def deleteHoles(self):
+        '''delete partitions that is smaller than the width of rover, which rover could not pass through'''
+        holes = self.findHoles()
+        if len(holes) > 0:
+            holes = self.mergeMultipleHoles(holes)
+            if holes is not None:
+                partitions = []
+                i = 0
+                if holes[-1][0] > holes[-1][1]:
+                    i = holes[-1][1] + 1
+                j = 0
+                while i < len(self.partitions):
+                    if i == holes[j][0]:
+                        k = holes[j][1]
+                        partitions.append((self.partitions[i][0], self.partitions[k][1], self.partitions[i][2]))
+                        if holes[j][0] > k:
+                            break
+                        j = j + 1
+                        i = k + 1
+                    else:
+                        partitions.append(self.partitions[i])
+                        i = i + 1
+                self.partitions = partitions
+    
+    def mergeMultipleHoles(self, holes):
+        if len(holes) <= 1:
+            return holes
+        result = []
+        i = 0
+        this = holes[0]
+        while i < len(holes):
+            next = holes[i + 1]
+            if this[1] != next[0]:
+                result.append(this)
+                this = next
+            else:
+                this = (this[0], next[1])
+            i = i + 1
+        if len(result) > 0:
+            if this[1] == result[0][0]:
+                result[0] = (this[0],result[0][1])
+            else:
+                result.append(this)
+        else:
+            if this[0] == this[1]:
+                self.partitions = []
+                return None
+            else:
+                result.append(this)
+        return result
+        
+    def findHoles(self):
+        holes = []
+        for i in range(0, len(self.partitions)):
+            this = self.partitions[i]
+            angle = width / this[2]
+            if angle > angle_unit:
+                left_angle = this[0] - angle
+                if left_angle < 0:
+                    left_angle = left_angle +360
+                right_angle = this[1] + angle
+                if right_angle > 360:
+                    right_angle = right_angle - 360
+                left = self.findPartition(left_angle)
+                right = self.findPartition(right_angle)
+                left_hole_candidate = findPartitionsInBetween(left, i)
+                right_hole_candidate = findPartitionsInBetween(i, right)
+                if left_hole_candidate is not None and abs(this[2] - self.partitions[left][2]) < 2*max_variance:
+                    isHole = True
+                    for j in left_hole_candidate:
+                        if self.partitions[j][2] < this[2]:
+                            isHole = False
+                            break
+                    if isHole:
+                        holes.append((left, i))
+                if right_hole_candidate is not None and abs(this[2] - self.partitions[right][2]) < 2*max_variance:
+                    isHole = True
+                    for j in right_hole_candidate:
+                        if self.partitions[j][2] < this[2]:
+                            isHole = False
+                            break
+                    if isHole:
+                        holes.append((i,right))
+        return holes
+                
+                
+    def findPartitionsInBetween(self, i, j):
+        ''' find the index of all partitions between partition[i] and partition[j]'''
+        if i + 1 == j:
+            return None
+        elif i < j:
+            return range(i+1, j)
+        elif i == len(self.partitions) - 1 and j == 0:
+            return None
+        else:
+            return range(i - len(self.partitions)+1, j)
 
 
     def findPartition(self, angle):
@@ -287,30 +387,34 @@ def cartesian_to_map(cart, origin):
         distances.append(d)
     return LidarMap(angles, distances)
 
-
-def main():
-    ''' Path finding algorithm.'''
-    target = (random.randrange(0,360),
-                    random.randrange(max_range/2,max_range))
-    m = gen_map()
+def PathFinding(target, m):
     waypoints = [(0,0)]
 
     # First check if we can see the position
     if target[1] < m.distance(m.angle_snap(target[0])):
         waypoints.append(target)
         # target within view exit early
-        plot_result(m, waypoints, target)
+        #plot_result(m, waypoints, target)
     else:
         opening = m.find_opening(target[0])
         if opening is not None:
             waypoints.append(opening)
-            plot_result(m, waypoints, target)
+            #plot_result(m, waypoints, target)
         else:
             # Assume we are in a corner or cave, and try
             # to get away from the obsticals
             deep_angle = center(*m.find_farthest_region())
             waypoints.append((deep_angle, max_range))
-            plot_result(m, waypoints, target)
+    return waypoints
+            
+
+def main():
+    ''' Path finding algorithm.'''
+    target = (random.randrange(0,360),
+                    random.randrange(max_range/2,max_range))
+    m = gen_map()
+    waypoints = PathFinding(target, m)
+    plot_result(m, waypoints, target)
 
 if __name__ == '__main__':
     m = gen_map()
