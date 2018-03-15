@@ -78,8 +78,8 @@ async def publish_state():
     position = simDevice.storage.rover.position
     pos_list = [position.lat, position.lon]
     noisy_pos = simulate_piksi(position)
-    # print(noisy_pos)
-    await simDevice.publish("GPSPosition", noisy_pos)
+    print(noisy_pos)
+    await simDevice.publish("singlePointGPS", noisy_pos)
     accel = simDevice.storage.rover.acceleration
     accel = simulate_bno(accel)
     # print(accel)
