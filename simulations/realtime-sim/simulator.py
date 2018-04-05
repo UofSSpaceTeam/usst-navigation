@@ -85,6 +85,19 @@ async def publish_state():
     # print(accel)
     await simDevice.publish("Acceleration", accel)
 
+@simDevice.on('*/FilteredGPS')
+async def check_accuracy(event, data):
+    pres = 1
+    dif_lat = abs(data[0] - simDevice.storage.rover.position.lat)
+    dif_long = abs(data[1] - simDevice.storage.rover.position.lon)
+    if dif_lat < pres:
+        print('Accurate Lat : ', dif_lat)
+    if dif_long < pres:
+        print('Accurate Long : ', dif_long)
+    else:
+        print('North dif: ', dif_lat, 'East dif: ', dif_long)
+
+
 @simDevice.on('*/wheelLF')
 def update_wheel_l(event, data):
     simDevice.storage.rover.wheelspeed[0] = data
