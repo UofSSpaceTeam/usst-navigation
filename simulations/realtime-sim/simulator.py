@@ -1,6 +1,7 @@
 import math
 import random
 import time
+import utm
 
 from robocluster import Device
 from GPSPosition import GPSPosition
@@ -73,6 +74,26 @@ async def update():
     print('heading', simDevice.storage.rover.heading)
     print('accleration', simDevice.storage.rover.acceleration)
 
+
+@simDevice.on('*/FilteredGPS')
+async def check_accuracy(event, data):
+    pres = 0.5
+    cart_pos_final = utm.from_latlon(data[0], data[1])[0:2]
+    initial_cart = utm.from_latlon(simDevice.storage.rover.position.lat, simDevice.storage.rover.position.lon)[0:2]
+    dif_lat = abs(cart_pos_final[0] - initial_cart[0])
+    dif_long = abs(cart_pos_final[1] - initial_cart[1])
+    if dif_lat < pres:
+        print('Accurate Lat : ', dif_lat)
+    if dif_long < pres:
+        print('Accurate Long : ', dif_long)
+    else:
+        print('North dif: ', dif_lat, 'East dif: ', dif_long)
+
+@simDevice.task
+async def set_wheels():
+    simDevice.sleep('20s')
+    simDevice.storage.rover.wheelspeed = [3,3]
+
 @simDevice.every(DELTA_T)
 async def publish_state():
     position = simDevice.storage.rover.position
@@ -84,19 +105,6 @@ async def publish_state():
     accel = simulate_bno(accel)
     # print(accel)
     await simDevice.publish("Acceleration", accel)
-
-@simDevice.on('*/FilteredGPS')
-async def check_accuracy(event, data):
-    pres = 1
-    dif_lat = abs(data[0] - simDevice.storage.rover.position.lat)
-    dif_long = abs(data[1] - simDevice.storage.rover.position.lon)
-    if dif_lat < pres:
-        print('Accurate Lat : ', dif_lat)
-    if dif_long < pres:
-        print('Accurate Long : ', dif_long)
-    else:
-        print('North dif: ', dif_lat, 'East dif: ', dif_long)
-
 
 @simDevice.on('*/wheelLF')
 def update_wheel_l(event, data):
